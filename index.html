@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>我的記帳本</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f2f2f7; margin: 0; padding: 20px; color: #000; }
+        .container { max-width: 400px; margin: 0 auto; }
+        h2 { text-align: center; color: #1c1c1e; }
+        .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #1c1c1e; border-bottom: 2px solid #f2f2f7; padding-bottom: 10px; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #d1d1d6; box-sizing: border-box; font-size: 16px; }
+        button { background-color: #007aff; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:active { background-color: #005bb5; }
+        .expense-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e5ea; }
+        .expense-item:last-child { border-bottom: none; }
+        .delete-btn { color: #ff3b30; cursor: pointer; font-size: 14px; margin-left: 10px; }
+        .overview-item { display: flex; justify-content: space-between; padding: 8px 0; }
+        .total-display { font-size: 24px; font-weight: bold; text-align: center; color: #34c759; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Expense Tracker</h2>
+    
+    <div class="card">
+        <div class="card-title">新增開支</div>
+        <input type="date" id="expenseDate">
+        <input type="number" id="amount" placeholder="金額 (例如 15.50)" step="0.01">
+        
+        <select id="category" onchange="checkCategory()">
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Bills">Bills</option>
+            <option value="Other">Other (自行輸入)</option>
+        </select>
+        
+        <input type="text" id="customCategory" placeholder="請輸入類別名稱" style="display: none;">
+        
+        <button onclick="addExpense()">Save Expense</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title" id="overviewTitle">本月分類總覽</div>
+        <div id="monthlyOverview">
+            </div>
+        <div class="total-display" style="margin-top: 15px; border-top: 1px solid #e5e5ea; padding-top: 10px;">
+            本月總計: $<span id="monthTotal">0.00</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">所有開支記錄</div>
+        <div id="expenseList">
+            </div>
+        <button onclick="clearData()" style="background-color: #ff3b30; margin-top: 20px;">Clear All Data</button>
+    </div>
+</div>
+
+<script>
+    // 初始化數據
+    let expenses = JSON.parse(localStorage.getItem('myExpenses')) || [];
+
+    // 設定今天的日期為預設值
+    document.getElementById('expenseDate').valueAsDate = new Date();
+
+    // 檢查是否選擇了 "Other" 以顯示自訂輸入框
+    function checkCategory() {
+        const cat = document.getElementById('category').value;
+        const customInput = document.getElementById('customCategory');
+        if (cat === 'Other') {
+            customInput.style.display = 'block';
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = ''; // 清空內容
+        }
+    }
+
+    // 更新介面
+    function updateUI() {
+        const list = document.getElementById('expenseList');
+        const overview = document.getElementById('monthlyOverview');
+        const monthTotalSpan = document.getElementById('monthTotal');
+        
+        list.innerHTML = '';
+        overview.innerHTML = '';
+
+        // 取得當前月份 (格式: YYYY-MM)
+        const today = new Date();
+        const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+        
+        let monthTotal = 0;
+        let categoryTotals = {};
+
+        // 1. 處理並顯示所有歷史記錄 (由新至舊排序)
+        const sortedExpenses = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        sortedExpenses.forEach((exp, index) => {
+            // 找出在原陣列中的 index 以便刪除
+            const originalIndex = expenses.indexOf(exp); 
+            list.innerHTML += `
+                <div class="expense-item">
+                    <div>
+                        <b>${exp.category}</b> <br> 
+                        <small style="color:#8e8e93;">${exp.date}</small>
+                    </div>
+                    <div>
+                        <span style="font-weight:bold;">$${parseFloat(exp.amount).toFixed(2)}</span>
+                        <span class="delete-btn" onclick="deleteExpense(${originalIndex})">刪除</span>
+                    </div>
+                </div>
+            `;
+
+            // 2. 計算本月總覽數據
+            if (exp.date.startsWith(currentMonth)) {
+                monthTotal += parseFloat(exp.amount);
+                if (categoryTotals[exp.category]) {
+                    categoryTotals[exp.category] += parseFloat(exp.amount);
+                } else {
+                    categoryTotals[exp.category] = parseFloat(exp.amount);
+                }
+            }
+        });
+
+        // 3. 顯示本月分類總覽
+        if (Object.keys(categoryTotals).length === 0) {
+            overview.innerHTML = '<div style="text-align:center; color:#8e8e93; font-size:14px;">本月尚無記錄</div>';
+        } else {
+            for (const [category, total] of Object.entries(categoryTotals)) {
+                overview.innerHTML += `
+                    <div class="overview-item">
+                        <span>${category}</span>
+                        <span style="font-weight:bold;">$${total.toFixed(2)}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        monthTotalSpan.innerText = monthTotal.toFixed(2);
+    }
+
+    // 新增開支
+    function addExpense() {
+        const date = document.getElementById('expenseDate').value;
+        const amt = document.getElementById('amount').value;
+        let cat = document.getElementById('category').value;
+        
+        if (cat === 'Other') {
+            const customCat = document.getElementById('customCategory').value.trim();
+            if (!customCat) return alert('請輸入自訂類別名稱！');
+            cat = customCat;
+        }
+
+        if (!amt) return alert('請輸入金額！');
+        if (!date) return alert('請選擇日期！');
+
+        // 將資料儲存到陣列
+        expenses.push({ date: date, amount: amt, category: cat });
+        localStorage.setItem('myExpenses', JSON.stringify(expenses));
+        
+        // 重置輸入框
+        document.getElementById('amount').value = '';
+        if(document.getElementById('category').value === 'Other'){
+            document.getElementById('customCategory').value = '';
+        }
+        
+        updateUI();
+    }
+
+    // 刪除單一記錄
+    function deleteExpense(index) {
+        if(confirm("確定要刪除這筆記錄嗎？")) {
+            expenses.splice(index, 1);
+            localStorage.setItem('myExpenses', JSON.stringify(expenses));
+            updateUI();
+        }
+    }
+
+    // 清除所有數據
+    function clearData() {
+        if(confirm("警告：確定要刪除所有開支記錄嗎？此動作無法復原。")) {
+            expenses = [];
+            localStorage.setItem('myExpenses', JSON.stringify(expenses));
+            updateUI();
+        }
+    }
+
+    // 啟動時載入數據
+    updateUI();
+</script>
+
+</body>
+</html>
