@@ -3,24 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>我的記帳本 Pro</title>
+    <title>我的記帳本 Pro+</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f2f2f7; margin: 0; padding: 20px; color: #000; padding-bottom: 50px; }
-        .container { max-width: 400px; margin: 0 auto; }
-        h2 { text-align: center; color: #1c1c1e; margin-bottom: 25px; }
-        .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .card-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #1c1c1e; border-bottom: 2px solid #f2f2f7; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #d1d1d6; box-sizing: border-box; font-size: 16px; }
-        button { background-color: #007aff; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:active { opacity: 0.8; }
-        .expense-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e5ea; }
+        /* 全域樣式優化，防止溢出 */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #f2f2f7; 
+            margin: 0; 
+            padding: 15px; 
+            color: #000; 
+            padding-bottom: 60px;
+            overflow-x: hidden; /* 防止橫向捲動 */
+        }
+
+        .container { max-width: 100%; width: 400px; margin: 0 auto; }
+        h2 { text-align: center; color: #1c1c1e; margin-bottom: 20px; font-size: 24px; }
+        
+        .card { 
+            background: #fff; 
+            padding: 15px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+            margin-bottom: 15px; 
+            width: 100%;
+        }
+
+        .card-title { 
+            font-size: 17px; 
+            font-weight: bold; 
+            margin-bottom: 12px; 
+            color: #1c1c1e; 
+            border-bottom: 1px solid #f2f2f7; 
+            padding-bottom: 8px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+
+        /* 修正輸入框在 iPhone 出界的問題 */
+        input, select, button { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 6px 0; 
+            border-radius: 10px; 
+            border: 1px solid #d1d1d6; 
+            box-sizing: border-box; 
+            font-size: 16px;
+            display: block;
+            -webkit-appearance: none; /* 去除 iOS 預設樣式 */
+        }
+
+        /* 特別處理日期框，防止溢出 */
+        input[type="date"] {
+            min-height: 44px;
+            background-color: #fff;
+        }
+
+        button { background-color: #007aff; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:active { opacity: 0.7; }
+
+        /* 匯率工具樣式 */
+        .currency-tool {
+            background-color: #f8f8f8;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px dashed #c7c7cc;
+        }
+        .currency-tool-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .tool-label { font-size: 12px; color: #8e8e93; margin-bottom: 2px; display: block; }
+
+        /* 縮小圖表容器 */
+        #chartContainer { 
+            width: 220px; /* 縮小比例 */
+            height: 220px;
+            margin: 10px auto 20px auto; 
+            position: relative;
+        }
+
+        .expense-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e5ea; align-items: center; }
         .expense-item:last-child { border-bottom: none; }
-        .delete-btn { color: #ff3b30; cursor: pointer; font-size: 14px; margin-left: 10px; }
-        .total-display { font-size: 22px; font-weight: bold; text-align: center; color: #34c759; margin-top: 10px; }
-        .month-picker { width: auto; padding: 5px; margin: 0; font-size: 14px; border: none; background: #f2f2f7; border-radius: 4px; }
-        #chartContainer { width: 100%; margin-bottom: 15px; }
-        .sync-btn { background-color: #5856d6; margin-top: 10px; }
+        .delete-btn { color: #ff3b30; cursor: pointer; font-size: 14px; margin-left: 10px; font-weight: 500; }
+        .total-display { font-size: 24px; font-weight: bold; text-align: center; color: #34c759; margin-top: 5px; }
+        
+        .month-picker { 
+            width: auto; 
+            padding: 4px 8px; 
+            margin: 0; 
+            font-size: 14px; 
+            border: 1px solid #e5e5ea; 
+            background: #fff; 
+            border-radius: 6px; 
+        }
+
+        #monthlyBreakdown { margin-top: 10px; }
+        .breakdown-row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }
+        
+        .sync-btn { background-color: #5856d6; margin-top: 8px; }
         .export-btn { background-color: #34c759; }
     </style>
 </head>
@@ -30,9 +116,25 @@
     <h2>Expense Tracker</h2>
     
     <div class="card">
-        <div class="card-title">新增開支</div>
+        <div class="card-title">新增記錄</div>
+        
+        <div class="currency-tool">
+            <span class="tool-label">匯率計算工具 (選用)</span>
+            <div class="currency-tool-grid">
+                <div>
+                    <label class="tool-label">當前匯率</label>
+                    <input type="number" id="rate" placeholder="例如 0.05" step="0.0001">
+                </div>
+                <div>
+                    <label class="tool-label">外幣金額</label>
+                    <input type="number" id="foreignAmount" placeholder="輸入外幣">
+                </div>
+            </div>
+            <button onclick="convertCurrency()" style="padding: 6px; font-size: 13px; background-color: #8e8e93;">轉換並填入金額</button>
+        </div>
+
         <input type="date" id="expenseDate">
-        <input type="number" id="amount" placeholder="輸入金額" step="0.01">
+        <input type="number" id="amount" placeholder="最終金額 (港幣)" step="0.01">
         
         <select id="category" onchange="toggleCustomInput()">
             <option value="Food">Food</option>
@@ -44,7 +146,7 @@
         
         <input type="text" id="customCategory" placeholder="請輸入類別名稱" style="display: none;">
         
-        <button onclick="addExpense()">儲存記錄</button>
+        <button onclick="addExpense()">儲存開支</button>
     </div>
 
     <div class="card">
@@ -60,40 +162,49 @@
         <div id="monthlyBreakdown"></div>
         
         <div class="total-display">
-            該月總額: $<span id="monthTotal">0.00</span>
+            $<span id="monthTotal">0.00</span>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-title">歷史記錄回顧</div>
+        <div class="card-title">歷史記錄</div>
         <div id="expenseList"></div>
     </div>
 
     <div class="card">
-        <div class="card-title">跨裝置同步</div>
-        <p style="font-size: 12px; color: #666;">將代碼複製並傳送到另一台裝置貼上即可同步。</p>
-        <button class="export-btn" onclick="exportData()">導出數據 (複製)</button>
-        <button class="sync-btn" onclick="importData()">導入數據 (貼上)</button>
-        <button onclick="clearAll()" style="background-color: #ff3b30; margin-top: 20px; font-size: 12px;">清空本機所有數據</button>
+        <div class="card-title">數據管理</div>
+        <button class="export-btn" onclick="exportData()">導出備份代碼 (複製)</button>
+        <button class="sync-btn" onclick="importData()">導入備份代碼 (貼上)</button>
+        <button onclick="clearAll()" style="background-color: #ff3b30; margin-top: 20px; font-size: 12px; padding: 8px;">清空所有記錄</button>
     </div>
 </div>
 
 <script>
-    // 初始化數據庫
     let expenses = JSON.parse(localStorage.getItem('myExpenses')) || [];
     let myChart = null;
 
-    // 設定預設日期
+    // 初始化日期
     const today = new Date();
     document.getElementById('expenseDate').valueAsDate = today;
     document.getElementById('viewMonth').value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+
+    // 匯率轉換邏輯
+    function convertCurrency() {
+        const rate = document.getElementById('rate').value;
+        const foreign = document.getElementById('foreignAmount').value;
+        if (!rate || !foreign) {
+            alert("請輸入匯率和外幣金額");
+            return;
+        }
+        const result = (parseFloat(rate) * parseFloat(foreign)).toFixed(2);
+        document.getElementById('amount').value = result;
+    }
 
     function toggleCustomInput() {
         const cat = document.getElementById('category').value;
         document.getElementById('customCategory').style.display = (cat === 'Other') ? 'block' : 'none';
     }
 
-    // 更新介面核心邏輯
     function updateUI() {
         const list = document.getElementById('expenseList');
         const breakdown = document.getElementById('monthlyBreakdown');
@@ -105,13 +216,13 @@
         let monthTotal = 0;
         let categoryTotals = {};
 
-        // 排序：由新到舊
+        // 排序
         const sorted = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        sorted.forEach((exp, index) => {
+        sorted.forEach((exp) => {
             const originalIndex = expenses.indexOf(exp);
             
-            // 顯示歷史記錄
+            // 列表顯示
             list.innerHTML += `
                 <div class="expense-item">
                     <div><b>${exp.category}</b><br><small style="color:#8e8e93;">${exp.date}</small></div>
@@ -122,36 +233,29 @@
                 </div>
             `;
 
-            // 計算選定月份
+            // 月份過濾與計算
             if (exp.date.startsWith(selectedMonth)) {
                 monthTotal += parseFloat(exp.amount);
                 categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + parseFloat(exp.amount);
             }
         });
 
-        // 顯示分類清單
         for (const [cat, sum] of Object.entries(categoryTotals)) {
             breakdown.innerHTML += `
-                <div style="display:flex; justify-content:space-between; font-size:14px; padding:5px 0;">
-                    <span>${cat}</span><b>$${sum.toFixed(2)}</b>
-                </div>
+                <div class="breakdown-row"><span>${cat}</span><b>$${sum.toFixed(2)}</b></div>
             `;
         }
 
-        monthTotalSpan.innerText = monthTotal.toFixed(2);
+        monthTotalSpan.innerText = monthTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         drawChart(categoryTotals);
     }
 
-    // 畫圖
     function drawChart(categoryData) {
         const ctx = document.getElementById('expenseChart').getContext('2d');
         if (myChart) myChart.destroy();
 
         const labels = Object.keys(categoryData);
-        if (labels.length === 0) {
-            ctx.clearRect(0, 0, 400, 400);
-            return;
-        }
+        if (labels.length === 0) return;
 
         myChart = new Chart(ctx, {
             type: 'pie',
@@ -160,55 +264,51 @@
                 datasets: [{
                     data: Object.values(categoryData),
                     backgroundColor: ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#007aff', '#5856d6', '#af52de'],
-                    borderWidth: 1
+                    borderWidth: 2,
+                    borderColor: '#fff'
                 }]
             },
-            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            options: { 
+                responsive: true,
+                maintainAspectRatio: false, // 允許自訂容器大小
+                plugins: { 
+                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } 
+                } 
+            }
         });
     }
 
-    // 新增
     function addExpense() {
         const date = document.getElementById('expenseDate').value;
         const amt = document.getElementById('amount').value;
         let cat = document.getElementById('category').value;
         
-        if (cat === 'Other') {
-            cat = document.getElementById('customCategory').value.trim() || 'Other';
-        }
-
-        if (!amt || !date) return alert('請填寫完整資訊');
+        if (cat === 'Other') cat = document.getElementById('customCategory').value.trim() || 'Other';
+        if (!amt || !date) return alert('請填入正確金額和日期');
 
         expenses.push({ date, amount: amt, category: cat });
-        saveAndRefresh();
+        saveData();
         
         document.getElementById('amount').value = '';
+        document.getElementById('foreignAmount').value = '';
         document.getElementById('customCategory').value = '';
     }
 
-    // 刪除
     function deleteExpense(idx) {
-        if(confirm("確定刪除？")) {
+        if(confirm("確定刪除此記錄？")) {
             expenses.splice(idx, 1);
-            saveAndRefresh();
+            saveData();
         }
     }
 
-    function saveAndRefresh() {
+    function saveData() {
         localStorage.setItem('myExpenses', JSON.stringify(expenses));
         updateUI();
     }
 
-    // --- 同步功能 ---
     function exportData() {
         const dataStr = JSON.stringify(expenses);
-        const el = document.createElement('textarea');
-        el.value = dataStr;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-        alert("所有數據已複製！請發送到電腦或手機貼上。");
+        navigator.clipboard.writeText(dataStr).then(() => alert("數據已複製到剪貼簿！"));
     }
 
     function importData() {
@@ -218,21 +318,20 @@
                 const newData = JSON.parse(input);
                 if (Array.isArray(newData)) {
                     expenses = newData;
-                    saveAndRefresh();
-                    alert("同步完成！");
+                    saveData();
+                    alert("導入成功！");
                 }
-            } catch(e) { alert("代碼無效"); }
+            } catch(e) { alert("代碼格式不正確"); }
         }
     }
 
     function clearAll() {
-        if(confirm("將清空所有記錄，確定嗎？")) {
+        if(confirm("警告：這將刪除所有記錄且無法復原。確定嗎？")) {
             expenses = [];
-            saveAndRefresh();
+            saveData();
         }
     }
 
-    // 啟動
     updateUI();
 </script>
 
