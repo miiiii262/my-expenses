@@ -6,7 +6,6 @@
     <title>我的記帳本 Pro+</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* 全域樣式優化，防止溢出 */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { 
@@ -16,7 +15,7 @@
             padding: 15px; 
             color: #000; 
             padding-bottom: 60px;
-            overflow-x: hidden; /* 防止橫向捲動 */
+            overflow-x: hidden; 
         }
 
         .container { max-width: 100%; width: 400px; margin: 0 auto; }
@@ -43,7 +42,6 @@
             align-items: center; 
         }
 
-        /* 修正輸入框在 iPhone 出界的問題 */
         input, select, button { 
             width: 100%; 
             padding: 12px; 
@@ -53,10 +51,9 @@
             box-sizing: border-box; 
             font-size: 16px;
             display: block;
-            -webkit-appearance: none; /* 去除 iOS 預設樣式 */
+            -webkit-appearance: none; 
         }
 
-        /* 特別處理日期框，防止溢出 */
         input[type="date"] {
             min-height: 44px;
             background-color: #fff;
@@ -65,7 +62,6 @@
         button { background-color: #007aff; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:active { opacity: 0.7; }
 
-        /* 匯率工具樣式 */
         .currency-tool {
             background-color: #f8f8f8;
             padding: 10px;
@@ -80,9 +76,8 @@
         }
         .tool-label { font-size: 12px; color: #8e8e93; margin-bottom: 2px; display: block; }
 
-        /* 縮小圖表容器 */
         #chartContainer { 
-            width: 220px; /* 縮小比例 */
+            width: 220px; 
             height: 220px;
             margin: 10px auto 20px auto; 
             position: relative;
@@ -173,8 +168,8 @@
 
     <div class="card">
         <div class="card-title">數據管理</div>
-        <button class="export-btn" onclick="exportData()">導出備份代碼 (複製)</button>
-        <button class="sync-btn" onclick="importData()">導入備份代碼 (貼上)</button>
+        <button class="export-btn" onclick="exportData()">導出加密代碼 (短)</button>
+        <button class="sync-btn" onclick="importData()">導入代碼 (貼上)</button>
         <button onclick="clearAll()" style="background-color: #ff3b30; margin-top: 20px; font-size: 12px; padding: 8px;">清空所有記錄</button>
     </div>
 </div>
@@ -183,12 +178,10 @@
     let expenses = JSON.parse(localStorage.getItem('myExpenses')) || [];
     let myChart = null;
 
-    // 初始化日期
     const today = new Date();
     document.getElementById('expenseDate').valueAsDate = today;
     document.getElementById('viewMonth').value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
 
-    // 匯率轉換邏輯
     function convertCurrency() {
         const rate = document.getElementById('rate').value;
         const foreign = document.getElementById('foreignAmount').value;
@@ -216,13 +209,11 @@
         let monthTotal = 0;
         let categoryTotals = {};
 
-        // 排序
         const sorted = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         sorted.forEach((exp) => {
             const originalIndex = expenses.indexOf(exp);
             
-            // 列表顯示
             list.innerHTML += `
                 <div class="expense-item">
                     <div><b>${exp.category}</b><br><small style="color:#8e8e93;">${exp.date}</small></div>
@@ -233,7 +224,6 @@
                 </div>
             `;
 
-            // 月份過濾與計算
             if (exp.date.startsWith(selectedMonth)) {
                 monthTotal += parseFloat(exp.amount);
                 categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + parseFloat(exp.amount);
@@ -270,7 +260,7 @@
             },
             options: { 
                 responsive: true,
-                maintainAspectRatio: false, // 允許自訂容器大小
+                maintainAspectRatio: false,
                 plugins: { 
                     legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } 
                 } 
@@ -306,22 +296,57 @@
         updateUI();
     }
 
+    // --- 全新的加密與壓縮導出功能 ---
     function exportData() {
-        const dataStr = JSON.stringify(expenses);
-        navigator.clipboard.writeText(dataStr).then(() => alert("數據已複製到剪貼簿！"));
+        // 1. 壓縮結構：將 [{date:"...", amount:"...", category:"..."}] 轉成單純的數組 [["...","...","..."]]
+        const compactData = expenses.map(e => [e.date, e.amount, e.category]);
+        
+        // 2. 轉為文字並處理可能出現的中文 (encodeURIComponent)
+        const jsonString = JSON.stringify(compactData);
+        
+        // 3. 神秘化：使用 Base64 編碼
+        const mysteriousCode = btoa(encodeURIComponent(jsonString));
+        
+        navigator.clipboard.writeText(mysteriousCode).then(() => alert("神秘代碼已複製！就算被人睇到都唔知係咩。"));
     }
 
+    // --- 全新的解密導入功能 (兼容舊版) ---
     function importData() {
-        const input = prompt("請貼上數據代碼：");
-        if (input) {
+        const input = prompt("請貼上神秘代碼 (或舊版代碼)：");
+        if (!input) return;
+
+        try {
+            let parsedData;
+            
+            // 嘗試當作新版神秘代碼來解密
             try {
-                const newData = JSON.parse(input);
-                if (Array.isArray(newData)) {
-                    expenses = newData;
-                    saveData();
-                    alert("導入成功！");
+                const decodedString = decodeURIComponent(atob(input));
+                parsedData = JSON.parse(decodedString);
+            } catch (e) {
+                // 如果解密失敗，假設它是舊版的普通明文代碼
+                parsedData = JSON.parse(input);
+            }
+
+            if (Array.isArray(parsedData)) {
+                // 檢查是否為新版壓縮格式 (Array 裡包著 Array)
+                if (parsedData.length > 0 && Array.isArray(parsedData[0])) {
+                    // 將短數組還原成完整的 Object
+                    expenses = parsedData.map(item => ({
+                        date: item[0],
+                        amount: item[1],
+                        category: item[2]
+                    }));
+                } else {
+                    // 舊版明文代碼直接使用
+                    expenses = parsedData;
                 }
-            } catch(e) { alert("代碼格式不正確"); }
+                saveData();
+                alert("數據導入成功！");
+            } else {
+                alert("代碼格式不正確，請重新確認。");
+            }
+        } catch(e) { 
+            alert("無效代碼！"); 
         }
     }
 
